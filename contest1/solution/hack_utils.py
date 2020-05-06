@@ -5,6 +5,7 @@ import numpy as np
 import pandas as pd
 import torch
 from torch.utils import data
+from itertools import islice
 
 np.random.seed(1234)
 torch.manual_seed(1234)
@@ -13,6 +14,21 @@ TRAIN_SIZE = 0.8
 NUM_PTS = 971
 CROP_SIZE = 128
 SUBMISSION_HEADER = "file_name,Point_M0_X,Point_M0_Y,Point_M1_X,Point_M1_Y,Point_M2_X,Point_M2_Y,Point_M3_X,Point_M3_Y,Point_M4_X,Point_M4_Y,Point_M5_X,Point_M5_Y,Point_M6_X,Point_M6_Y,Point_M7_X,Point_M7_Y,Point_M8_X,Point_M8_Y,Point_M9_X,Point_M9_Y,Point_M10_X,Point_M10_Y,Point_M11_X,Point_M11_Y,Point_M12_X,Point_M12_Y,Point_M13_X,Point_M13_Y,Point_M14_X,Point_M14_Y,Point_M15_X,Point_M15_Y,Point_M16_X,Point_M16_Y,Point_M17_X,Point_M17_Y,Point_M18_X,Point_M18_Y,Point_M19_X,Point_M19_Y,Point_M20_X,Point_M20_Y,Point_M21_X,Point_M21_Y,Point_M22_X,Point_M22_Y,Point_M23_X,Point_M23_Y,Point_M24_X,Point_M24_Y,Point_M25_X,Point_M25_Y,Point_M26_X,Point_M26_Y,Point_M27_X,Point_M27_Y,Point_M28_X,Point_M28_Y,Point_M29_X,Point_M29_Y\n"
+
+
+def is_in_jupyter():
+    try:
+        return 'zmqshell' in str(get_ipython())
+    except:
+        return False
+
+
+def stqdm(collection, **kwargs):
+    if is_in_jupyter():
+        collection = tqdm.tqdm_notebook(collection, **kwargs)
+    else:
+        collection = tqdm.tqdm(collection, **kwargs)
+    return collection
 
 
 class ScaleMinSideToSize(object):
@@ -80,6 +96,7 @@ class ThousandLandmarksDataset(data.Dataset):
         landmark_file_name = os.path.join(root, 'landmarks.csv') if split is not "test" \
             else os.path.join(root, "test_points.csv")
         images_root = os.path.join(root, "images")
+        has_landmarks = split in ("train", "val")
 
         self.image_names = []
         self.landmarks = []
@@ -87,25 +104,30 @@ class ThousandLandmarksDataset(data.Dataset):
         with open(landmark_file_name, "rt") as fp:
             num_lines = sum(1 for line in fp)
         num_lines -= 1  # header
+        print(f'Total lines (without header): {num_lines}')
 
         with open(landmark_file_name, "rt") as fp:
-            for i, line in tqdm.tqdm(enumerate(fp)):
-                if i == 0:
-                    continue  # skip header
-                if split == "train" and i == int(TRAIN_SIZE * num_lines):
-                    break  # reached end of train part of data
-                elif split == "val" and i < int(TRAIN_SIZE * num_lines):
-                    continue  # has not reached start of val part of data
+            if split == "train":
+                length = int(TRAIN_SIZE * num_lines)
+                print(f'Loading train dataset ({length} lines)')
+                lines = islice(fp, 1, length + 1)
+            elif split == "val":
+                length = num_lines - int(TRAIN_SIZE * num_lines)
+                print(f'Loading val dataset ({length} lines)')
+                lines = islice(fp, int(TRAIN_SIZE * num_lines) + 1, None)
+            else:
+                length = num_lines
+                lines = islice(fp, 1, None)
+            for i, line in stqdm(enumerate(lines), total=length, leave=True):
                 elements = line.strip().split("\t")
                 image_name = os.path.join(images_root, elements[0])
                 self.image_names.append(image_name)
 
-                if split in ("train", "val"):
-                    landmarks = list(map(np.int16, elements[1:]))
-                    landmarks = np.array(landmarks, dtype=np.int16).reshape((len(landmarks) // 2, 2))
+                if has_landmarks:
+                    landmarks = np.array(elements[1:], dtype=np.int16).reshape((-1, 2))
                     self.landmarks.append(landmarks)
 
-        if split in ("train", "val"):
+        if has_landmarks:
             self.landmarks = torch.as_tensor(self.landmarks)
         else:
             self.landmarks = None
