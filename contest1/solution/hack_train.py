@@ -19,6 +19,7 @@ from hack_utils import NUM_PTS, CROP_SIZE
 from hack_utils import ScaleMinSideToSize, CropCenter, TransformByKeys
 from hack_utils import ThousandLandmarksDataset
 from hack_utils import restore_landmarks_batch, create_submission
+from hack_utils import stqdm
 
 torch.backends.cudnn.deterministic = True
 torch.backends.cudnn.benchmark = False
@@ -39,7 +40,7 @@ def parse_arguments():
 def train(model, loader, loss_fn, optimizer, device):
     model.train()
     train_loss = []
-    for batch in tqdm.tqdm(loader, total=len(loader), desc="training..."):
+    for batch in stqdm(loader, total=len(loader), desc="training..."):
         images = batch["image"].to(device)  # B x 3 x CROP_SIZE x CROP_SIZE
         landmarks = batch["landmarks"]  # B x (2 * NUM_PTS)
 
@@ -57,7 +58,7 @@ def train(model, loader, loss_fn, optimizer, device):
 def validate(model, loader, loss_fn, device):
     model.eval()
     val_loss = []
-    for batch in tqdm.tqdm(loader, total=len(loader), desc="validation..."):
+    for batch in stqdm(loader, total=len(loader), desc="validation..."):
         images = batch["image"].to(device)
         landmarks = batch["landmarks"]
 
@@ -72,7 +73,7 @@ def validate(model, loader, loss_fn, device):
 def predict(model, loader, device):
     model.eval()
     predictions = np.zeros((len(loader.dataset), NUM_PTS, 2))
-    for i, batch in enumerate(tqdm.tqdm(loader, total=len(loader), desc="test prediction...")):
+    for i, batch in enumerate(stqdm(loader, total=len(loader), desc="test prediction...")):
         images = batch["image"].to(device)
 
         with torch.no_grad():
