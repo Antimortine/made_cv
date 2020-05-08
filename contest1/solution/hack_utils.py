@@ -15,6 +15,26 @@ NUM_PTS = 971
 CROP_SIZE = 128
 SUBMISSION_HEADER = "file_name,Point_M0_X,Point_M0_Y,Point_M1_X,Point_M1_Y,Point_M2_X,Point_M2_Y,Point_M3_X,Point_M3_Y,Point_M4_X,Point_M4_Y,Point_M5_X,Point_M5_Y,Point_M6_X,Point_M6_Y,Point_M7_X,Point_M7_Y,Point_M8_X,Point_M8_Y,Point_M9_X,Point_M9_Y,Point_M10_X,Point_M10_Y,Point_M11_X,Point_M11_Y,Point_M12_X,Point_M12_Y,Point_M13_X,Point_M13_Y,Point_M14_X,Point_M14_Y,Point_M15_X,Point_M15_Y,Point_M16_X,Point_M16_Y,Point_M17_X,Point_M17_Y,Point_M18_X,Point_M18_Y,Point_M19_X,Point_M19_Y,Point_M20_X,Point_M20_Y,Point_M21_X,Point_M21_Y,Point_M22_X,Point_M22_Y,Point_M23_X,Point_M23_Y,Point_M24_X,Point_M24_Y,Point_M25_X,Point_M25_Y,Point_M26_X,Point_M26_Y,Point_M27_X,Point_M27_Y,Point_M28_X,Point_M28_Y,Point_M29_X,Point_M29_Y\n"
 
+FLIPPED_IDXS = (
+    [i for i in range(64, 128)] +
+    [i for i in range(0, 64)] +
+    [i for i in range(272, 127, -1)] +
+    [i for i in range(337, 401)] +
+    [i for i in range(273, 337)] +
+    [i for i in range(464, 527)] +
+    [i for i in range(401, 464)] +
+    [i for i in range(527, 587)] +
+    [i for i in range(714, 841)] +
+    [i for i in range(587, 714)] +
+    [i for i in range(872, 840, -1)] +
+    [i for i in range(904, 872, -1)] +
+    [i for i in range(936, 904, -1)] +
+    [i for i in range(968, 936, -1)] +
+    [i for i in range(970, 971)] +
+    [i for i in range(969, 970)]
+)
+FLIPPED_IDXS = torch.as_tensor(FLIPPED_IDXS)
+
 
 def is_in_jupyter():
     try:
@@ -71,6 +91,32 @@ class CropCenter(object):
         if 'landmarks' in sample:
             landmarks = sample['landmarks'].reshape(-1, 2)
             landmarks -= torch.tensor((margin_w, margin_h), dtype=landmarks.dtype)[None, :]
+            sample['landmarks'] = landmarks.reshape(-1)
+
+        return sample
+
+
+class RandomHorizontalFlip(object):
+    def __init__(self, p=0.5, elem_name='image'):
+        self.p = p
+        self.elem_name = elem_name
+
+    def __call__(self, sample):
+        img = sample[self.elem_name]
+        h, w, _ = img.shape
+        sample["img_width"] = w
+
+        if not np.random.binomial(1, self.p):
+            sample["flip"] = False
+            return sample
+
+        sample["flip"] = True
+        sample[self.elem_name] = img[:, ::-1]
+
+        if 'landmarks' in sample:
+            landmarks = sample['landmarks'].reshape(-1, 2)
+            landmarks = landmarks[FLIPPED_IDXS]
+            landmarks[:, 0] = torch.tensor((w,), dtype=landmarks.dtype)[:, None] - landmarks[:, 0]
             sample['landmarks'] = landmarks.reshape(-1)
 
         return sample

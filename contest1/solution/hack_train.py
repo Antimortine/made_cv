@@ -74,6 +74,9 @@ def predict(model, loader, device):
     model.eval()
     predictions = np.zeros((len(loader.dataset), NUM_PTS, 2))
     for i, batch in enumerate(stqdm(loader, total=len(loader), desc="test prediction...")):
+        if "flip" in sample:
+            raise NotImplementedError
+
         images = batch["image"].to(device)
 
         with torch.no_grad():
