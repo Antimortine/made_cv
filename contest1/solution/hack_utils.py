@@ -99,7 +99,6 @@ class ThousandLandmarksDataset(data.Dataset):
         has_landmarks = split in ("train", "val")
 
         self.image_names = []
-        self.landmarks = []
 
         with open(landmark_file_name, "rt") as fp:
             num_lines = sum(1 for line in fp)
@@ -118,6 +117,10 @@ class ThousandLandmarksDataset(data.Dataset):
             else:
                 length = num_lines
                 lines = islice(fp, 1, None)
+
+            if has_landmarks:
+                self.landmarks = np.empty((length, NUM_PTS, 2), dtype=np.int16)
+
             for i, line in stqdm(enumerate(lines), total=length, leave=True):
                 elements = line.strip().split("\t")
                 image_name = os.path.join(images_root, elements[0])
@@ -125,12 +128,12 @@ class ThousandLandmarksDataset(data.Dataset):
 
                 if has_landmarks:
                     landmarks = np.array(elements[1:], dtype=np.int16).reshape((-1, 2))
-                    self.landmarks.append(landmarks)
+                    self.landmarks[i] = landmarks
 
-        if has_landmarks:
-            self.landmarks = torch.as_tensor(self.landmarks)
-        else:
-            self.landmarks = None
+            if has_landmarks:
+                self.landmarks = torch.as_tensor(self.landmarks)
+            else:
+                self.landmarks = None
 
         self.transforms = transforms
 
