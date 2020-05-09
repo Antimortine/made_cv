@@ -111,7 +111,7 @@ class RandomHorizontalFlip(object):
             return sample
 
         sample["flip"] = True
-        sample[self.elem_name] = img[:, ::-1]
+        sample[self.elem_name] = img[:, ::-1].copy()
 
         if 'landmarks' in sample:
             landmarks = sample['landmarks'].reshape(-1, 2)
@@ -192,6 +192,7 @@ class ThousandLandmarksDataset(data.Dataset):
         image = cv2.imread(self.image_names[idx])
         image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
         sample["image"] = image
+        sample["image_name"] = self.image_names[idx]
 
         if self.transforms is not None:
             sample = self.transforms(sample)
