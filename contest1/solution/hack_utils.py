@@ -136,7 +136,7 @@ class TransformByKeys(object):
 
 
 class ThousandLandmarksDataset(data.Dataset):
-    def __init__(self, root, transforms, split="train"):
+    def __init__(self, root, transforms, split="train", train_size=TRAIN_SIZE):
         super(ThousandLandmarksDataset, self).__init__()
         self.root = root
         landmark_file_name = os.path.join(root, 'landmarks.csv') if split is not "test" \
@@ -153,13 +153,13 @@ class ThousandLandmarksDataset(data.Dataset):
 
         with open(landmark_file_name, "rt") as fp:
             if split == "train":
-                length = int(TRAIN_SIZE * num_lines)
+                length = int(train_size * num_lines)
                 print(f'Loading train dataset ({length} lines)')
                 lines = islice(fp, 1, length + 1)
             elif split == "val":
-                length = num_lines - int(TRAIN_SIZE * num_lines)
+                length = num_lines - int(train_size * num_lines)
                 print(f'Loading val dataset ({length} lines)')
-                lines = islice(fp, int(TRAIN_SIZE * num_lines) + 1, None)
+                lines = islice(fp, int(train_size * num_lines) + 1, None)
             else:
                 length = num_lines
                 lines = islice(fp, 1, None)
